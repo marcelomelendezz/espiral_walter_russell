@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabla Periódica de Walter Russell 3D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #16213e 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #00f2ff, #ff00ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #aaa;
+            font-size: 1.1em;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #canvas3d:active {
+            cursor: grabbing;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 10px;
+            background: linear-gradient(45deg, #00f2ff, #0099ff);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+
+        .controls button:hover {
+            transform: scale(1.05);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            border: 2px solid;
+            position: relative;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 30px;
+            cursor: pointer;
+            color: #fff;
+        }
+
+        .element-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .element-symbol {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .element-name {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+
+        .element-number {
+            font-size: 1.2em;
+            color: #aaa;
+        }
+
+        .element-info {
+            margin-top: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+
+        .info-label {
+            color: #00f2ff;
+            font-weight: bold;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 250px;
+        }
+
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #00f2ff;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Tabla Periódica de Walter Russell</h1>
+            <p>Geometría Sagrada del Universo - Espirales Octavas en 3D</p>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas3d"></canvas>
+            
+            <div class="controls">
+                <button onclick="zoomIn()">🔍+ Acercar</button>
+                <button onclick="zoomOut()">🔍- Alejar</button>
+                <button onclick="resetView()">🔄 Resetear Vista</button>
+                <button onclick="toggleAutoRotate()">🔄 Auto Rotar</button>
+                <button onclick="changeView('spiral')">🌀 Vista Espiral</button>
+                <button onclick="changeView('cube')">📦 Vista Cúbica</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-title">Octavas de Russell</div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff0066;"></div>
+                    <span>Octava 1 (Inercia)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6600;"></div>
+                    <span>Octava 2</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffcc00;"></div>
+                    <span>Octava 3</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00ff66;"></div>
+                    <span>Octava 4</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00ccff;"></div>
+                    <span>Octava 5</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #0066ff;"></div>
+                    <span>Octava 6</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #cc00ff;"></div>
+                    <span>Octava 7</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff00ff;"></div>
+                    <span>Octava 8 (Gases nobles)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content" id="modalContent">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="element-header">
+                <div class="element-number" id="elementNumber"></div>
+                <div class="element-symbol" id="elementSymbol"></div>
+                <div class="element-name" id="elementName"></div>
+            </div>
+            <div class="element-info" id="elementInfo"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Datos de elementos según Walter Russell
+        const elements = [
+            // Octava 1
+            { number: 1, symbol: 'H', name: 'Hidrógeno', octave: 1, position: 1, mass: 1.008, charge: '+1/-1', state: 'Gas', russell: 'Tono 1 - Iniciación radiactiva' },
+            
+            // Octava 2
+            { number: 2, symbol: 'He', name: 'Helio', octave: 2, position: 0, mass: 4.003, charge: '0', state: 'Gas noble', russell: 'Tono 0 - Balance inerte' },
+            { number: 3, symbol: 'Li', name: 'Litio', octave: 2, position: 1, mass: 6.941, charge: '+1', state: 'Sólido', russell: 'Tono 1' },
+            { number: 4, symbol: 'Be', name: 'Berilio', octave: 2, position: 2, mass: 9.012, charge: '+2', state: 'Sólido', russell: 'Tono 2' },
+            { number: 5, symbol: 'B', name: 'Boro', octave: 2, position: 3, mass: 10.81, charge: '+3', state: 'Sólido', russell: 'Tono 3' },
+            { number: 6, symbol: 'C', name: 'Carbono', octave: 2, position: 4, mass: 12.01, charge: '+4/-4', state: 'Sólido', russell: 'Tono 4 - Amplitud máxima' },
+            { number: 7, symbol: 'N', name: 'Nitrógeno', octave: 2, position: 5, mass: 14.01, charge: '-3', state: 'Gas', russell: 'Tono 5' },
+            { number: 8, symbol: 'O', name: 'Oxígeno', octave: 2, position: 6, mass: 16.00, charge: '-2', state: 'Gas', russell: 'Tono 6' },
+            { number: 9, symbol: 'F', name: 'Flúor', octave: 2, position: 7, mass: 19.00, charge: '-1', state: 'Gas', russell: 'Tono 7' },
+            { number: 10, symbol: 'Ne', name: 'Neón', octave: 2, position: 0, mass: 20.18, charge: '0', state: 'Gas noble', russell: 'Tono 0 - Balance inerte' },
+            
+            // Octava 3
+            { number: 11, symbol: 'Na', name: 'Sodio', octave: 3, position: 1, mass: 22.99, charge: '+1', state: 'Sólido', russell: 'Tono 1' },
+            { number: 12, symbol: 'Mg', name: 'Magnesio', octave: 3, position: 2, mass: 24.31, charge: '+2', state: 'Sólido', russell: 'Tono 2' },
+            { number: 13, symbol: 'Al', name: 'Aluminio', octave: 3, position: 3, mass: 26.98, charge: '+3', state: 'Sólido', russell: 'Tono 3' },
+            { number: 14, symbol: 'Si', name: 'Silicio', octave: 3, position: 4, mass: 28.09, charge: '+4/-4', state: 'Sólido', russell: 'Tono 4 - Amplitud máxima' },
+            { number: 15, symbol: 'P', name: 'Fósforo', octave: 3, position: 5, mass: 30.97, charge: '-3', state: 'Sólido', russell: 'Tono 5' },
+            { number: 16, symbol: 'S', name: 'Azufre', octave: 3, position: 6, mass: 32.07, charge: '-2', state: 'Sólido', russell: 'Tono 6' },
+            { number: 17, symbol: 'Cl', name: 'Cloro', octave: 3, position: 7, mass: 35.45, charge: '-1', state: 'Gas', russell: 'Tono 7' },
+            { number: 18, symbol: 'Ar', name: 'Argón', octave: 3, position: 0, mass: 39.95, charge: '0', state: 'Gas noble', russell: 'Tono 0 - Balance inerte' },
+            
+            // Octava 4
+            { number: 19, symbol: 'K', name: 'Potasio', octave: 4, position: 1, mass: 39.10, charge: '+1', state: 'Sólido', russell: 'Tono 1' },
+            { number: 20, symbol: 'Ca', name: 'Calcio', octave: 4, position: 2, mass: 40.08, charge: '+2', state: 'Sólido', russell: 'Tono 2' },
+            { number: 21, symbol: 'Sc', name: 'Escandio', octave: 4, position: 3, mass: 44.96, charge: '+3', state: 'Sólido', russell: 'Tono 3' },
+            { number: 22, symbol: 'Ti', name: 'Titanio', octave: 4, position: 3.5, mass: 47.87, charge: '+4', state: 'Sólido', russell: 'Transición' },
+            { number: 23, symbol: 'V', name: 'Vanadio', octave: 4, position: 3.5, mass: 50.94, charge: '+5', state: 'Sólido', russell: 'Transición' },
+            { number: 24, symbol: 'Cr', name: 'Cromo', octave: 4, position: 4, mass: 52.00, charge: '+3/+6', state: 'Sólido', russell: 'Tono 4' },
+            { number: 25, symbol: 'Mn', name: 'Manganeso', octave: 4, position: 4, mass: 54.94, charge: '+2/+7', state: 'Sólido', russell: 'Tono 4' },
+            { number: 26, symbol: 'Fe', name: 'Hierro', octave: 4, position: 4, mass: 55.85, charge: '+2/+3', state: 'Sólido', russell: 'Tono 4 - Amplitud' },
+            { number: 27, symbol: 'Co', name: 'Cobalto', octave: 4, position: 4.5, mass: 58.93, charge: '+2/+3', state: 'Sólido', russell: 'Transición' },
+            { number: 28, symbol: 'Ni', name: 'Níquel', octave: 4, position: 4.5, mass: 58.69, charge: '+2', state: 'Sólido', russell: 'Transición' },
+            { number: 29, symbol: 'Cu', name: 'Cobre', octave: 4, position: 5, mass: 63.55, charge: '+1/+2', state: 'Sólido', russell: 'Tono 5' },
+            { number: 30, symbol: 'Zn', name: 'Zinc', octave: 4, position: 6, mass: 65.38, charge: '+2', state: 'Sólido', russell: 'Tono 6' },
+            { number: 31, symbol: 'Ga', name: 'Galio', octave: 4, position: 6.5, mass: 69.72, charge: '+3', state: 'Sólido', russell: 'Transición' },
+            { number: 32, symbol: 'Ge', name: 'Germanio', octave: 4, position: 6.5, mass: 72.63, charge: '+4', state: 'Sólido', russell: 'Transición' },
+            { number: 33, symbol: 'As', name: 'Arsénico', octave: 4, position: 7, mass: 74.92, charge: '-3', state: 'Sólido', russell: 'Tono 7' },
+            { number: 34, symbol: 'Se', name: 'Selenio', octave: 4, position: 7, mass: 78.97, charge: '-2', state: 'Sólido', russell: 'Tono 7' },
+            { number: 35, symbol: 'Br', name: 'Bromo', octave: 4, position: 7, mass: 79.90, charge: '-1', state: 'Líquido', russell: 'Tono 7' },
+            { number: 36, symbol: 'Kr', name: 'Kriptón', octave: 4, position: 0, mass: 83.80, charge: '0', state: 'Gas noble', russell: 'Tono 0 - Balance' },
+            
+            // Elementos adicionales de octavas superiores (simplificado)
+            { number: 37, symbol: 'Rb', name: 'Rubidio', octave: 5, position: 1, mass: 85.47, charge: '+1', state: 'Sólido', russell: 'Octava 5 - Tono 1' },
+            { number: 38, symbol: 'Sr', name: 'Estroncio', octave: 5, position: 2, mass: 87.62, charge: '+2', state: 'Sólido', russell: 'Octava 5 - Tono 2' },
+            { number: 47, symbol: 'Ag', name: 'Plata', octave: 5, position: 4, mass: 107.87, charge: '+1', state: 'Sólido', russell: 'Octava 5 - Amplitud' },
+            { number: 53, symbol: 'I', name: 'Yodo', octave: 5, position: 7, mass: 126.90, charge: '-1', state: 'Sólido', russell: 'Octava 5 - Tono 7' },
+            { number: 54, symbol: 'Xe', name: 'Xenón', octave: 5, position: 0, mass: 131.29, charge: '0', state: 'Gas noble', russell: 'Octava 5 - Balance' },
+            
+            { number: 55, symbol: 'Cs', name: 'Cesio', octave: 6, position: 1, mass: 132.91, charge: '+1', state: 'Sólido', russell: 'Octava 6 - Tono 1' },
+            { number: 56, symbol: 'Ba', name: 'Bario', octave: 6, position: 2, mass: 137.33, charge: '+2', state: 'Sólido', russell: 'Octava 6 - Tono 2' },
+            { number: 79, symbol: 'Au', name: 'Oro', octave: 6, position: 4, mass: 196.97, charge: '+1/+3', state: 'Sólido', russell: 'Octava 6 - Amplitud' },
+            { number: 82, symbol: 'Pb', name: 'Plomo', octave: 6, position: 5, mass: 207.2, charge: '+2/+4', state: 'Sólido', russell: 'Octava 6 - Tono 5' },
+            { number: 86, symbol: 'Rn', name: 'Radón', octave: 6, position: 0, mass: 222, charge: '0', state: 'Gas noble', russell: 'Octava 6 - Balance' },
+            
+            { number: 87, symbol: 'Fr', name: 'Francio', octave: 7, position: 1, mass: 223, charge: '+1', state: 'Sólido', russell: 'Octava 7 - Tono 1' },
+            { number: 88, symbol: 'Ra', name: 'Radio', octave: 7, position: 2, mass: 226, charge: '+2', state: 'Sólido', russell: 'Octava 7 - Tono 2' },
+            { number: 92, symbol: 'U', name: 'Uranio', octave: 7, position: 4, mass: 238.03, charge: '+3/+6', state: 'Sólido', russell: 'Octava 7 - Amplitud' },
+            { number: 118, symbol: 'Og', name: 'Oganesón', octave: 8, position: 0, mass: 294, charge: '0', state: 'Gas noble', russell: 'Octava 8 - Completitud' }
+        ];
+
+        // Configuración Three.js
+        let scene, camera, renderer, raycaster, mouse;
+        let elementMeshes = [];
+        let autoRotate = false;
+        let currentView = 'spiral';
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        function init() {
+            const canvas = document.getElementById('canvas3d');
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.z = 60;
+            camera.position.y = 0;
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight - 100);
+            renderer.setClearColor(0x000000, 0);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Luces
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 1);
+            pointLight.position.set(50, 50, 50);
+            scene.add(pointLight);
+
+            const pointLight2 = new THREE.PointLight(0xffffff, 0.5);
+            pointLight2.position.set(-50, -50, -50);
+            scene.add(pointLight2);
+
+            createElements();
+            
+            canvas.addEventListener('click', onCanvasClick);
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('mouseleave', onMouseUp);
+            canvas.addEventListener('wheel', onMouseWheel);
+            window.addEventListener('resize', onWindowResize);
+
+            animate();
+        }
+
+        function getOctaveColor(octave) {
+            const colors = [
+                0xff0066, // Octava 1
+                0xff6600, // Octava 2
+                0xffcc00, // Octava 3
+                0x00ff66, // Octava 4
+                0x00ccff, // Octava 5
+                0x0066ff, // Octava 6
+                0xcc00ff, // Octava 7
+                0xff00ff  // Octava 8
+            ];
+            return colors[octave - 1] || 0xffffff;
+        }
+
+        function createElements() {
+            elements.forEach((element, index) => {
+                const geometry = new THREE.SphereGeometry(1, 32, 32);
+                const material = new THREE.MeshPhongMaterial({
+                    color: getOctaveColor(element.octave),
+                    emissive: getOctaveColor(element.octave),
+                    emissiveIntensity: 0.3,
+                    shininess: 100
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Posición en espiral - más angosta y más larga
+                const angle = (index / elements.length) * Math.PI * 12;
+                const radius = 10 + element.octave * 1.5;
+                const height = element.octave * 10 - 40;
+                
+                mesh.position.x = Math.cos(angle) * radius;
+                mesh.position.z = Math.sin(angle) * radius;
+                mesh.position.y = height;
+                
+                mesh.userData = element;
+                
+                // Texto del símbolo - más visible y claro
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 512;
+                canvas.height = 512;
+                
+                // Fondo semi-transparente para mejor legibilidad
+                context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                context.beginPath();
+                context.arc(256, 256, 200, 0, Math.PI * 2);
+                context.fill();
+                
+                // Texto del símbolo
+                context.fillStyle = '#ffffff';
+                context.font = 'Bold 180px Arial';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(element.symbol, 256, 256);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ 
+                    map: texture,
+                    transparent: true,
+                    depthTest: false,
+                    depthWrite: false
+                });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(2.5, 2.5, 1);
+                sprite.renderOrder = 999;
+                mesh.add(sprite);
+                
+                scene.add(mesh);
+                elementMeshes.push(mesh);
+            });
+        }
+
+        function onCanvasClick(event) {
+            if (isDragging) return;
+            
+            const rect = event.target.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(elementMeshes);
+
+            if (intersects.length > 0) {
+                const element = intersects[0].object.userData;
+                showElementInfo(element);
+            }
+        }
+
+        function showElementInfo(element) {
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalContent.style.borderColor = '#' + getOctaveColor(element.octave).toString(16).padStart(6, '0');
+            
+            document.getElementById('elementNumber').textContent = `Elemento #${element.number}`;
+            document.getElementById('elementSymbol').textContent = element.symbol;
+            document.getElementById('elementName').textContent = element.name;
+            
+            const infoHTML = `
+                <div class="info-row">
+                    <span class="info-label">Octava de Russell:</span>
+                    <span>${element.octave}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Posición en octava:</span>
+                    <span>${element.russell}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Masa atómica:</span>
+                    <span>${element.mass}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Carga:</span>
+                    <span>${element.charge}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Estado:</span>
+                    <span>${element.state}</span>
+                </div>
+                <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 5px; font-size: 0.9em; line-height: 1.6;">
+                    <strong>Filosofía de Russell:</strong><br>
+                    ${element.position === 0 ? 'Punto de balance y reposo inerte. Representa la completitud de la octava.' :
+                      element.position === 4 ? 'Punto de máxima amplitud. Transición entre expansión y contracción.' :
+                      element.position < 4 ? 'Fase de radiación y expansión desde el punto cero.' :
+                      'Fase de contracción y retorno al equilibrio.'}
+                </div>
+            `;
+            
+            document.getElementById('elementInfo').innerHTML = infoHTML;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function onMouseDown(event) {
+            isDragging = false;
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        }
+
+        function onMouseMove(event) {
+            if (event.buttons === 1) {
+                isDragging = true;
+                const deltaX = event.clientX - previousMousePosition.x;
+                const deltaY = event.clientY - previousMousePosition.y;
+                
+                scene.rotation.y += deltaX * 0.01;
+                scene.rotation.x += deltaY * 0.01;
+                
+                previousMousePosition = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+            }
+        }
+
+        function onMouseUp() {
+            setTimeout(() => { isDragging = false; }, 100);
+        }
+
+        function onMouseWheel(event) {
+            event.preventDefault();
+            const zoomSpeed = 2;
+            const delta = event.deltaY > 0 ? zoomSpeed : -zoomSpeed;
+            
+            camera.position.z += delta;
+            camera.position.y += delta * 0.4;
+            
+            // Limitar el zoom
+            if (camera.position.z < 20) camera.position.z = 20;
+            if (camera.position.z > 200) camera.position.z = 200;
+            if (camera.position.y < 10) camera.position.y = 10;
+            if (camera.position.y > 80) camera.position.y = 80;
+            
+            camera.lookAt(0, 0, 0);
+        }
+
+        function zoomIn() {
+            camera.position.z -= 10;
+            camera.position.y -= 4;
+            if (camera.position.z < 20) camera.position.z = 20;
+            if (camera.position.y < 10) camera.position.y = 10;
+            camera.lookAt(0, 0, 0);
+        }
+
+        function zoomOut() {
+            camera.position.z += 10;
+            camera.position.y += 4;
+            if (camera.position.z > 200) camera.position.z = 200;
+            if (camera.position.y > 80) camera.position.y = 80;
+            camera.lookAt(0, 0, 0);
+        }
+
+        function resetView() {
+            scene.rotation.set(0, 0, 0);
+            camera.position.set(0, 0, 60);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function toggleAutoRotate() {
+            autoRotate = !autoRotate;
+        }
+
+        function changeView(view) {
+            currentView = view;
+            elementMeshes.forEach((mesh, index) => {
+                const element = mesh.userData;
+                
+                if (view === 'spiral') {
+                    const angle = (index / elements.length) * Math.PI * 12;
+                    const radius = 10 + element.octave * 1.5;
+                    const height = element.octave * 10 - 40;
+                    
+                    mesh.position.x = Math.cos(angle) * radius;
+                    mesh.position.z = Math.sin(angle) * radius;
+                    mesh.position.y = height;
+                } else if (view === 'cube') {
+                    const octaveOffset = (element.octave - 1) * 12;
+                    const posInOctave = element.position;
+                    
+                    mesh.position.x = (posInOctave - 3.5) * 5;
+                    mesh.position.y = element.octave * 6 - 20;
+                    mesh.position.z = Math.sin(posInOctave) * 10;
+                }
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (autoRotate) {
+                scene.rotation.y += 0.005;
+            }
+            
+            elementMeshes.forEach(mesh => {
+                mesh.rotation.y += 0.01;
+            });
+            
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / (window.innerHeight - 100);
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight - 100);
+        }
+
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('modal')) {
+                closeModal();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
